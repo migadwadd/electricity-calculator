@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Цахилгааны төлбөрийн тооцоолуур</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#1f2937;background:#f3f5f7}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 14px}
+main{max-width:680px;margin:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 6px 24px #00000010}
+h1{font-size:25px;margin:0 0 8px}
+.sub{color:#64748b;margin:0 0 22px;line-height:1.5}
+label{display:block;font-weight:600;margin:16px 0 7px}
+select,input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font-size:16px;background:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{width:100%;padding:14px;border:0;border-radius:10px;background:#236b45;color:#fff;font-size:17px;font-weight:700;margin-top:20px;cursor:pointer}
+.result{margin-top:20px;padding:18px;background:#eef6f0;border-radius:12px}
+.total{font-size:30px;font-weight:800;color:#185b37;margin:6px 0 12px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #dce9df}
+.note{font-size:13px;color:#64748b;line-height:1.5;margin-top:18px}
+.hidden{display:none}
+@media(max-width:480px){main{padding:18px}.grid{grid-template-columns:1fr}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Цахилгааны төлбөрийн тооцоолуур</h1>
+<p class="sub">Цахилгаан хэрэглээний хэмжээгээ оруулж, сарын төлбөрөө урьдчилан тооцоолоорой.</p>
+
+<label for="meter">Тоолуурын төрөл</label>
+<select id="meter">
+<option value="simple">Энгийн тарифт тоолуур</option>
+<option value="two">2 тарифт тоолуур</option>
+<option value="three">3 тарифт тоолуур</option>
+</select>
+
+<label for="voltage">Цахилгаан хангамж</label>
+<select id="voltage">
+<option value="220">220 В</option>
+<option value="380">380 В</option>
+</select>
+
+<div id="simpleFields">
+<label for="total">Сарын нийт хэрэглээ (кВт·ц)</label>
+<input id="total" type="number" min="0" step="0.1" placeholder="Жишээ: 250">
+</div>
+<div id="twoFields" class="hidden">
+<div class="grid">
+<div><label for="day">Өдрийн хэрэглээ (кВт·ц)</label><input id="day" type="number" min="0" step="0.1" placeholder="Жишээ: 120"></div>
+<div><label for="night">Шөнийн хэрэглээ (кВт·ц)</label><input id="night" type="number" min="0" step="0.1" placeholder="Жишээ: 180"></div>
+</div>
+</div>
+<div id="threeFields" class="hidden">
+<div class="grid">
+<div><label for="day3">Өдрийн хэрэглээ (кВт·ц)</label><input id="day3" type="number" min="0" step="0.1"></div>
+<div><label for="peak">Оргил цагийн хэрэглээ (кВт·ц)</label><input id="peak" type="number" min="0" step="0.1"></div>
+<div><label for="night3">Шөнийн хэрэглээ (кВт·ц)</label><input id="night3" type="number" min="0" step="0.1"></div>
+</div>
+</div>
+
+<button onclick="calculate()">Төлбөр тооцоолох</button>
+<section id="result" class="result hidden" aria-live="polite">
+<div>Тооцоолсон төлбөр</div>
+<div class="total" id="amount">0 ₮</div>
+<div class="row"><span>Нийт хэрэглээ</span><strong id="usage">0 кВт·ц</strong></div>
+<div class="row"><span>Шөнийн хөнгөлөлт</span><strong id="discount">0 ₮</strong></div>
+<div class="row"><span>Төлбөр (тооцоолсон)</span><strong id="due">0 ₮</strong></div>
+</section>
+<p class="note">Тайлбар: Тооцоолол нь ЭХЗХ-ны нийтэд нээлттэй тарифын мэдээлэлд тулгуурласан урьдчилсан дүн юм. Шөнийн цагийн хөнгөлөлтийг 21:00–09:00 цагийн хэрэглээнд тооцно. 220 В хэрэглэгчид 1,500 кВт·ц, 380 В хэрэглэгчид 3,000 кВт·ц хүртэлх шөнийн хэрэглээнд 100%, түүнээс давсан хэсэгт 50%-ийн хөнгөлөлт тооцсон. Бодит нэхэмжлэлд бусад төлбөр, татвар болон нийлүүлэгчийн тооцоолол нөлөөлж болно. Тариф өөрчлөгдвөл тооцоолуурын утгыг шинэчлэх шаардлагатай.</p>
+<p class="note">Эх сурвалж: Эрчим хүчний зохицуулах хороо — Төлбөрийн тооцоолуур: <a href="https://erc.gov.mn/calculator" target="_blank" rel="noopener">erc.gov.mn/calculator</a></p>
+</main>
+<script>
+const rates={
+ simple:[184,269,299],
+ two:[[191,154],[236,168],[278,168]],
+ three:[[179,294,119],[200,305,119],[231,315,119]]
+};
+const $=id=>document.getElementById(id);
+const val=id=>Math.max(0,Number($(id).value)||0);
+function band(total){return total<=150?0:total<=300?1:2}
+function fmt(n){return Math.round(n).toLocaleString('mn-MN')+' ₮'}
+$('meter').addEventListener('change',()=>{
+ const m=$('meter').value;
+ $('simpleFields').classList.toggle('hidden',m!=='simple');
+ $('twoFields').classList.toggle('hidden',m!=='two');
+ $('threeFields').classList.toggle('hidden',m!=='three');
+ $('result').classList.add('hidden');
+});
+function calculate(){
+ const m=$('meter').value, v=$('voltage').value;
+ let total=0, bill=0, night=0, discount=0;
+ const cap=v==='220'?1500:3000;
+ if(m==='simple'){
+   total=val('total');
+   const r=rates.simple[band(total)];
+   bill=total*r;
+ } else if(m==='two'){
+   const d=val('day'), n=val('night'); total=d+n; night=n;
+   const r=rates.two[band(total)];
+   const free=Math.min(n,cap), excess=Math.max(0,n-cap);
+   discount=free*r[1]+excess*r[1]*0.5;
+   bill=d*r[0]+excess*r[1];
+ } else {
+   const d=val('day3'), p=val('peak'), n=val('night3'); total=d+p+n; night=n;
+   const r=rates.three[band(total)];
+   const free=Math.min(n,cap), excess=Math.max(0,n-cap);
+   discount=free*r[2]+excess*r[2]*0.5;
+   bill=d*r[0]+p*r[1]+excess*r[2];
+ }
+ $('amount').textContent=fmt(bill);
+ $('usage').textContent=total.toLocaleString('mn-MN')+' кВт·ц';
+ $('discount').textContent=fmt(discount);
+ $('due').textContent=fmt(bill);
+ $('result').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
